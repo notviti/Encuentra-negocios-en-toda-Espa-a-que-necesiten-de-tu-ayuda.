@@ -97,9 +97,7 @@ button:hover{
 <div class="container">
 
 <label><b>Ciudad</b></label>
-<select id="ciudad">
-    <option>Cargando ciudades...</option>
-</select>
+<select id="ciudad"></select>
 
 <label><b>Categoría</b></label>
 <select id="categoria"></select>

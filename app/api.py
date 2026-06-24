@@ -6,6 +6,7 @@ from fastapi.responses import HTMLResponse, StreamingResponse
 
 from app.overpass import (
     buscar_negocios,
+    obtener_ciudades_españa,
     obtener_categorias
 )
 
@@ -96,20 +97,7 @@ button:hover{
 <div class="container">
 
 <label><b>Ciudad</b></label>
-<select id="ciudad">
-    <option value="Madrid">Madrid</option>
-    <option value="Barcelona">Barcelona</option>
-    <option value="Valencia">Valencia</option>
-    <option value="Sevilla">Sevilla</option>
-    <option value="Zaragoza">Zaragoza</option>
-    <option value="Málaga">Málaga</option>
-    <option value="Murcia">Murcia</option>
-    <option value="Palma">Palma</option>
-    <option value="Bilbao">Bilbao</option>
-    <option value="Alicante">Alicante</option>
-    <option value="Granada">Granada</option>
-    <option value="Oviedo">Oviedo</option>
-</select>
+<select id="ciudad"></select>
 
 <label><b>Categoría</b></label>
 <select id="categoria"></select>
@@ -122,21 +110,51 @@ button:hover{
 
 <script>
 
+// CIUDADES
+async function cargarCiudades(){
+
+    let res = await fetch("/ciudades");
+    let data = await res.json();
+
+    let select = document.getElementById("ciudad");
+
+    select.innerHTML = "";
+
+    data.ciudades.forEach(c => {
+
+        let option = document.createElement("option");
+
+        option.value = c;
+        option.textContent = c;
+
+        select.appendChild(option);
+
+    });
+}
+
+
 // CATEGORÍAS
 async function cargarCategorias(){
+
     let res = await fetch("/categorias");
     let data = await res.json();
 
     let select = document.getElementById("categoria");
+
     select.innerHTML = "";
 
     data.categorias.forEach(c => {
+
         let option = document.createElement("option");
+
         option.value = c.startsWith("*") ? "*" : c;
         option.textContent = c;
+
         select.appendChild(option);
+
     });
 }
+
 
 // DESCARGA ZIP
 function descargar(){
@@ -148,7 +166,9 @@ function descargar(){
         `/descargar?ciudad=${encodeURIComponent(ciudad)}&categoria=${encodeURIComponent(categoria)}`;
 }
 
+
 // INIT
+cargarCiudades();
 cargarCategorias();
 
 </script>
@@ -157,34 +177,10 @@ cargarCategorias();
 </html>
 """
 
-
-# -------------------------
-# CIUDADES (FIX CRÍTICO)
-# -------------------------
 @app.get("/ciudades")
 def ciudades():
     return {
-        "ciudades": [
-            "Madrid",
-            "Barcelona",
-            "Valencia",
-            "Sevilla",
-            "Zaragoza",
-            "Málaga",
-            "Murcia",
-            "Palma",
-            "Bilbao",
-            "Alicante",
-            "Granada",
-            "Oviedo",
-            "A Coruña",
-            "Valladolid",
-            "Vigo",
-            "Gijón",
-            "Santander",
-            "Toledo",
-            "Salamanca"
-        ]
+        "ciudades": obtener_ciudades_españa()
     }
 
 
@@ -231,10 +227,15 @@ def descargar(ciudad: str, categoria: str = "*"):
 # -------------------------
 # API SIMPLE
 # -------------------------
-@app.get("/ciudades")
-def ciudades():
+@app.get("/buscar")
+def buscar(ciudad: str, categoria: str = "*"):
+
+    negocios = buscar_negocios(ciudad, categoria)
+
     return {
-        "ciudades": obtener_ciudades_españa()
+        "ciudad": ciudad,
+        "categoria": categoria,
+        "total_negocios": len(negocios)
     }
 
 
@@ -243,3 +244,5 @@ def categorias():
     return {
         "categorias": obtener_categorias()
     }
+
+

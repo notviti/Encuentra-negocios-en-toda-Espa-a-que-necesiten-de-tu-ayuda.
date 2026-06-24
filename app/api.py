@@ -1,18 +1,27 @@
-from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
-from pathlib import Path
+import io
+import zipfile
 
-from app.overpass import buscar_negocios, obtener_ciudades_españa
+from fastapi import FastAPI
+from fastapi.responses import HTMLResponse, StreamingResponse
+
+from app.overpass import (
+    buscar_negocios,
+    obtener_ciudades_españa,
+    obtener_categorias
+)
+
 from app.analyzer import generar_estadisticas
-from app.excel_export import exportar_negocios_excel, exportar_estadisticas_excel
+from app.excel_export import (
+    exportar_negocios_excel,
+    exportar_estadisticas_excel
+)
 
 app = FastAPI()
 
-BASE_DIR = Path(__file__).resolve().parent
-templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
-
+# -------------------------
+# FRONTEND
+# -------------------------
 @app.get("/", response_class=HTMLResponse)
 def home():
     return """
@@ -34,9 +43,9 @@ h3 {
 
 body{
     font-family: Trebuchet MS;
-     background: linear-gradient(to right, #f2f2f2, #dbdbdb);
-            height: 100vh;
-            margin: 0;
+    background: linear-gradient(to right, #f2f2f2, #dbdbdb);
+    height: 100vh;
+    margin: 0;
     padding:40px;
 }
 
@@ -83,22 +92,17 @@ button:hover{
 <body>
 
 <h1>Business Tracker</h1>
-
 <h3>Encuentra negocios en toda España que necesiten de tu ayuda.</h3>
 
 <div class="container">
 
 <label><b>Ciudad</b></label>
-<select id="ciudad">
-    <option>Cargando ciudades...</option>
-</select>
+<select id="ciudad"></select>
 
 <label><b>Categoría</b></label>
-<select id="categoria">
-    <option>Cargando categorías...</option>
-</select>
+<select id="categoria"></select>
 
-<button onclick="buscar()"><b>Buscar negocios</b></button>
+<button onclick="descargar()"><b>Descargar análisis ZIP</b></button>
 
 <div id="resultado"></div>
 
@@ -106,31 +110,12 @@ button:hover{
 
 <script>
 
-async function cargarCategorias(){
-
-    let res = await fetch("/categorias");
-    let data = await res.json();
-
-    let select = document.getElementById("categoria");
-
-    select.innerHTML = "";
-
-    data.categorias.forEach(c => {
-        let option = document.createElement("option");
-        option.value = c.startsWith("*") ? "*" : c;
-        option.textContent = c;
-        select.appendChild(option);
-    });
-}
-
-// 🔥 cargar ciudades al iniciar
+// CIUDADES
 async function cargarCiudades(){
-
     let res = await fetch("/ciudades");
     let data = await res.json();
 
     let select = document.getElementById("ciudad");
-
     select.innerHTML = "";
 
     data.ciudades.forEach(c => {
@@ -141,24 +126,33 @@ async function cargarCiudades(){
     });
 }
 
-async function buscar(){
+// CATEGORÍAS
+async function cargarCategorias(){
+    let res = await fetch("/categorias");
+    let data = await res.json();
+
+    let select = document.getElementById("categoria");
+    select.innerHTML = "";
+
+    data.categorias.forEach(c => {
+        let option = document.createElement("option");
+        option.value = c.startsWith("*") ? "*" : c;
+        option.textContent = c;
+        select.appendChild(option);
+    });
+}
+
+// DESCARGA ZIP
+function descargar(){
 
     let ciudad = document.getElementById("ciudad").value;
     let categoria = document.getElementById("categoria").value;
 
-    let res = await fetch(`/buscar?ciudad=${encodeURIComponent(ciudad)}&categoria=${encodeURIComponent(categoria)}`);
-    let data = await res.json();
-
-    document.getElementById("resultado").innerHTML = `
-        <h3>Resultado</h3>
-        <p><b>Ciudad:</b> ${data.ciudad}</p>
-        <p><b>Categoría:</b> ${data.categoria}</p>
-        <p><b>Total negocios:</b> ${data.total_negocios}</p>
-        <p>Excel generado en /output</p>
-    `;
+    window.location.href =
+        `/descargar?ciudad=${encodeURIComponent(ciudad)}&categoria=${encodeURIComponent(categoria)}`;
 }
 
-// iniciar
+// INIT
 cargarCiudades();
 cargarCategorias();
 
@@ -169,16 +163,42 @@ cargarCategorias();
 """
 
 
+# -------------------------
+# ZIP DOWNLOAD (NUEVO)
+# -------------------------
+@app.get("/descargar")
+def descargar(ciudad: str, categoria: str = "*"):
+
+    negocios = buscar_negocios(ciudad, categoria)
+    estadisticas = generar_estadisticas(negocios)
+
+    excel_negocios = exportar_negocios_excel(negocios)
+    excel_estadisticas = exportar_estadisticas_excel(estadisticas)
+
+    zip_buffer = io.BytesIO()
+
+    with zipfile.ZipFile(zip_buffer, "w") as zip_file:
+        zip_file.writestr(f"{ciudad}_negocios.xlsx", excel_negocios)
+        zip_file.writestr(f"{ciudad}_analisis.xlsx", excel_estadisticas)
+
+    zip_buffer.seek(0)
+
+    return StreamingResponse(
+        zip_buffer,
+        media_type="application/x-zip-compressed",
+        headers={
+            "Content-Disposition": f"attachment; filename={ciudad}_analisis.zip"
+        }
+    )
+
+
+# -------------------------
+# API SIMPLE
+# -------------------------
 @app.get("/buscar")
 def buscar(ciudad: str, categoria: str = "*"):
 
     negocios = buscar_negocios(ciudad, categoria)
-
-    archivo_negocios = exportar_negocios_excel(negocios)
-
-    estadisticas = generar_estadisticas(negocios)
-
-    archivo_estadisticas = exportar_estadisticas_excel(estadisticas)
 
     return {
         "ciudad": ciudad,
@@ -193,8 +213,6 @@ def ciudades():
         "ciudades": obtener_ciudades_españa()
     }
 
-
-from app.overpass import obtener_categorias
 
 @app.get("/categorias")
 def categorias():

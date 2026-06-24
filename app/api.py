@@ -159,6 +159,36 @@ cargarCategorias();
 
 
 # -------------------------
+# CIUDADES (FIX CRÍTICO)
+# -------------------------
+@app.get("/ciudades")
+def ciudades():
+    return {
+        "ciudades": [
+            "Madrid",
+            "Barcelona",
+            "Valencia",
+            "Sevilla",
+            "Zaragoza",
+            "Málaga",
+            "Murcia",
+            "Palma",
+            "Bilbao",
+            "Alicante",
+            "Granada",
+            "Oviedo",
+            "A Coruña",
+            "Valladolid",
+            "Vigo",
+            "Gijón",
+            "Santander",
+            "Toledo",
+            "Salamanca"
+        ]
+    }
+
+
+# -------------------------
 # ZIP DOWNLOAD
 # -------------------------
 @app.get("/descargar")

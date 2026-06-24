@@ -6,7 +6,6 @@ from fastapi.responses import HTMLResponse, StreamingResponse
 
 from app.overpass import (
     buscar_negocios,
-    obtener_ciudades_españa,
     obtener_categorias
 )
 
@@ -97,7 +96,20 @@ button:hover{
 <div class="container">
 
 <label><b>Ciudad</b></label>
-<select id="ciudad"></select>
+<select id="ciudad">
+    <option value="Madrid">Madrid</option>
+    <option value="Barcelona">Barcelona</option>
+    <option value="Valencia">Valencia</option>
+    <option value="Sevilla">Sevilla</option>
+    <option value="Zaragoza">Zaragoza</option>
+    <option value="Málaga">Málaga</option>
+    <option value="Murcia">Murcia</option>
+    <option value="Palma">Palma</option>
+    <option value="Bilbao">Bilbao</option>
+    <option value="Alicante">Alicante</option>
+    <option value="Granada">Granada</option>
+    <option value="Oviedo">Oviedo</option>
+</select>
 
 <label><b>Categoría</b></label>
 <select id="categoria"></select>
@@ -109,22 +121,6 @@ button:hover{
 </div>
 
 <script>
-
-// CIUDADES
-async function cargarCiudades(){
-    let res = await fetch("/ciudades");
-    let data = await res.json();
-
-    let select = document.getElementById("ciudad");
-    select.innerHTML = "";
-
-    data.ciudades.forEach(c => {
-        let option = document.createElement("option");
-        option.value = c;
-        option.textContent = c;
-        select.appendChild(option);
-    });
-}
 
 // CATEGORÍAS
 async function cargarCategorias(){
@@ -153,7 +149,6 @@ function descargar(){
 }
 
 // INIT
-cargarCiudades();
 cargarCategorias();
 
 </script>
@@ -164,7 +159,7 @@ cargarCategorias();
 
 
 # -------------------------
-# ZIP DOWNLOAD (NUEVO)
+# ZIP DOWNLOAD
 # -------------------------
 @app.get("/descargar")
 def descargar(ciudad: str, categoria: str = "*"):
@@ -204,13 +199,6 @@ def buscar(ciudad: str, categoria: str = "*"):
         "ciudad": ciudad,
         "categoria": categoria,
         "total_negocios": len(negocios)
-    }
-
-
-@app.get("/ciudades")
-def ciudades():
-    return {
-        "ciudades": obtener_ciudades_españa()
     }
 
 

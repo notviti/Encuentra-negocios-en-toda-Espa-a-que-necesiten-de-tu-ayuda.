@@ -140,18 +140,21 @@ async function cargarCategorias(){
     let data = await res.json();
 
     let select = document.getElementById("categoria");
-
     select.innerHTML = "";
 
-    data.categorias.forEach(c => {
+    data.categorias.forEach((c, index) => {
 
         let option = document.createElement("option");
 
         option.value = c.startsWith("*") ? "*" : c;
         option.textContent = c;
 
-        select.appendChild(option);
+        // Seleccionar automáticamente la primera opción (* TODAS)
+        if(index === 0){
+            option.selected = true;
+        }
 
+        select.appendChild(option);
     });
 }
 
@@ -160,7 +163,9 @@ async function cargarCategorias(){
 function descargar(){
 
     let ciudad = document.getElementById("ciudad").value;
-    let categoria = document.getElementById("categoria").value;
+
+    let categoria =
+        document.getElementById("categoria").value || "*";
 
     window.location.href =
         `/descargar?ciudad=${encodeURIComponent(ciudad)}&categoria=${encodeURIComponent(categoria)}`;

@@ -195,24 +195,35 @@ def ciudades():
 def descargar(ciudad: str, categoria: str = "*"):
 
     negocios = buscar_negocios(ciudad, categoria)
+
+    archivo_negocios = exportar_negocios_excel(negocios)
+
     estadisticas = generar_estadisticas(negocios)
 
-    excel_negocios = exportar_negocios_excel(negocios)
-    excel_estadisticas = exportar_estadisticas_excel(estadisticas)
+    archivo_estadisticas = exportar_estadisticas_excel(estadisticas)
 
     zip_buffer = io.BytesIO()
 
-    with zipfile.ZipFile(zip_buffer, "w") as zip_file:
-        zip_file.writestr(f"{ciudad}_negocios.xlsx", excel_negocios)
-        zip_file.writestr(f"{ciudad}_analisis.xlsx", excel_estadisticas)
+    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
+
+        zip_file.write(
+            archivo_negocios,
+            arcname=f"{ciudad}_negocios.xlsx"
+        )
+
+        zip_file.write(
+            archivo_estadisticas,
+            arcname=f"{ciudad}_analisis.xlsx"
+        )
 
     zip_buffer.seek(0)
 
     return StreamingResponse(
         zip_buffer,
-        media_type="application/x-zip-compressed",
+        media_type="application/zip",
         headers={
-            "Content-Disposition": f"attachment; filename={ciudad}_analisis.zip"
+            "Content-Disposition":
+            f'attachment; filename="{ciudad}_analisis.zip"'
         }
     )
 
@@ -220,15 +231,10 @@ def descargar(ciudad: str, categoria: str = "*"):
 # -------------------------
 # API SIMPLE
 # -------------------------
-@app.get("/buscar")
-def buscar(ciudad: str, categoria: str = "*"):
-
-    negocios = buscar_negocios(ciudad, categoria)
-
+@app.get("/ciudades")
+def ciudades():
     return {
-        "ciudad": ciudad,
-        "categoria": categoria,
-        "total_negocios": len(negocios)
+        "ciudades": obtener_ciudades_españa()
     }
 
 
